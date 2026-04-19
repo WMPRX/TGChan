@@ -1,0 +1,591 @@
+// Telegram Directory - Prisma Schema
+// SQLite database for Telegram Channel/Group Directory
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum ChannelType {
+  CHANNEL
+  GROUP
+  SUPERGROUP
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  USER
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  CRYPTO
+  BANK_TRANSFER
+  PAPARA
+  MANUAL
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  RENEWAL
+  CANCELLATION
+}
+
+enum TransactionStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+// ==================== MODELS ====================
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    // JSON string: {"tr":"Eğlence","en":"Entertainment"}
+  slug        String    @unique
+  icon        String?
+  description String?   // JSON string: {"tr":"...","en":"..."}
+  parentId    Int?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  order       Int       @default(0)
+  isActive    Boolean   @default(true)
+  channelCount Int      @default(0)
+  channels       Channel[]
+  submissions    ChannelSubmission[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  name      String    // JSON string: {"tr":"...","en":"..."}
+  slug      String    @unique
+  channels  Channel[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Channel {
+  id              Int       @id @default(autoincrement())
+  telegramId      String    @unique
+  username        String    @unique
+  title           String
+  description     String?
+  type            ChannelType @default(CHANNEL)
+  avatarUrl       String?
+  memberCount     Int       @default(0)
+  language        String    @default("en")
+  categoryId      Int?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  isVerified      Boolean   @default(false)
+  isFeatured      Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  inviteLink      String?
+  websiteUrl      String?
+  rank            Int?
+  previousRank    Int?
+  dailyGrowth     Int       @default(0)
+  weeklyGrowth    Int       @default(0)
+  monthlyGrowth   Int       @default(0)
+  submittedById   Int?
+  submittedBy     User?     @relation(fields: [submittedById], references: [id])
+  isPremium       Boolean   @default(false)
+  premiumUntil    DateTime?
+  premiumPlanId   Int?
+  premiumPlan     PremiumPlan? @relation(fields: [premiumPlanId], references: [id])
+  premiumPosition Int?
+  highlightColor  String?
+  hasBadge        Boolean   @default(false)
+  tags            Tag[]
+  statistics      ChannelStatistic[]
+  submissions     ChannelSubmission[]
+  premiumOrders   PremiumOrder[]
+  comments        ChannelComment[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ChannelStatistic {
+  id          Int      @id @default(autoincrement())
+  channelId   Int
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  memberCount Int
+  viewCount   Int?
+  postCount   Int?
+  date        DateTime
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String
+  name             String
+  username         String    @unique
+  role             UserRole  @default(USER)
+  avatar           String?
+  bio              String?
+  telegramUsername String?
+  isEmailVerified  Boolean   @default(false)
+  isBanned         Boolean   @default(false)
+  banReason        String?
+  isActive         Boolean   @default(true)
+  lastLogin        DateTime?
+  channels         Channel[]
+  submissions      ChannelSubmission[]
+  reviewedSubmissions ChannelSubmission[] @relation("SubmissionReviewer")
+  premiumOrders    PremiumOrder[]
+  comments         ChannelComment[]
+  reviewedComments ChannelComment[] @relation("CommentReviewer")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model ChannelSubmission {
+  id              Int             @id @default(autoincrement())
+  userId          Int
+  user            User            @relation(fields: [userId], references: [id])
+  telegramUsername String
+  title           String?
+  description     String?
+  type            ChannelType     @default(CHANNEL)
+  language        String          @default("en")
+  categoryId      Int?
+  category        Category?       @relation(fields: [categoryId], references: [id])
+  tags            String?         // JSON string
+  inviteLink      String?
+  status          SubmissionStatus @default(PENDING)
+  reviewNote      String?
+  reviewedBy      Int?
+  reviewer        User?           @relation("SubmissionReviewer", fields: [reviewedBy], references: [id])
+  reviewedAt      DateTime?
+  channelId       Int?
+  channel         Channel?        @relation(fields: [channelId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model PremiumPlan {
+  id          Int       @id @default(autoincrement())
+  name        String    // JSON string: {"tr":"Bronz","en":"Bronze"}
+  slug        String    @unique
+  description String?   // JSON string
+  durationDays Int
+  price       Float
+  currency    String    @default("USD")
+  features    String?   // JSON string with features
+  isActive    Boolean   @default(true)
+  order       Int       @default(0)
+  channels    Channel[]
+  orders      PremiumOrder[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PremiumOrder {
+  id            Int          @id @default(autoincrement())
+  orderNumber   String       @unique
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+  channelId     Int
+  channel       Channel      @relation(fields: [channelId], references: [id])
+  planId        Int
+  plan          PremiumPlan  @relation(fields: [planId], references: [id])
+  amount        Float
+  currency      String       @default("USD")
+  status        OrderStatus  @default(PENDING_PAYMENT)
+  paymentMethod PaymentMethod @default(MANUAL)
+  paymentId     String?
+  paymentData   String?      // JSON string
+  startDate     DateTime?
+  endDate       DateTime?
+  autoRenew     Boolean      @default(false)
+  invoiceUrl    String?
+  notes         String?
+  transactions  PremiumTransaction[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model PremiumTransaction {
+  id              Int             @id @default(autoincrement())
+  orderId         Int
+  order           PremiumOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type            TransactionType
+  amount          Float
+  currency        String          @default("USD")
+  status          TransactionStatus @default(PENDING)
+  paymentMethod   String?
+  providerResponse String?        // JSON string
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model SiteSettings {
+  id                Int     @id @default(1)
+  siteName          String  @default("Telegram Directory")
+  siteDescription   String? // JSON string
+  logo              String?
+  favicon           String?
+  defaultLanguage   String  @default("en")
+  supportedLanguages String? // JSON string: ["tr","en","ru","zh","es","id","vi","ar"]
+  socialLinks       String? // JSON string: {telegram, twitter, instagram}
+  analyticsId       String?
+  metaKeywords      String? // JSON string
+  metaDescription   String? // JSON string
+  footerText        String? // JSON string
+  adsEnabled        Boolean @default(false)
+  maintenanceMode   Boolean @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
+model Page {
+  id             Int     @id @default(autoincrement())
+  title          String  // JSON string
+  slug           String  @unique
+  content        String? // JSON string
+  metaTitle      String? // JSON string
+  metaDescription String? // JSON string
+  metaKeywords   String? // JSON string
+  isPublished    Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Coupon {
+  id            Int     @id @default(autoincrement())
+  code          String  @unique
+  discountType  String  @default("percentage") // percentage | fixed
+  discountValue Float
+  validFrom     DateTime?
+  validUntil    DateTime?
+  usageLimit    Int?
+  usageCount    Int     @default(0)
+  minAmount     Float?
+  applicablePlans String? // JSON string: plan slugs
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ==================== GDPR / KVKK ====================
+
+model LegalPage {
+  id              Int     @id @default(autoincrement())
+  title           String  // JSON i18n
+  slug            String  @unique
+  content         String? // JSON i18n - rich text
+  heroImage       String?
+  pageType        String  @default("custom") // kvkk | privacy | cookie | consent | application | disclaimer | terms | custom
+  isPublished     Boolean @default(false)
+  order           Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CookieConsent {
+  id              Int     @id @default(1)
+  enabled         Boolean @default(true)
+  position        String  @default("bottom") // bottom | top | floating
+  theme           String  @default("light") // light | dark | auto
+  message         String? // JSON i18n
+  acceptText      String? // JSON i18n
+  rejectText      String? // JSON i18n
+  settingsText    String? // JSON i18n
+  policyUrl       String?
+  categories      String? // JSON: [{id, name, description, required, enabled}]
+  autoScan        Boolean @default(false)
+  lastScanDate    DateTime?
+  scanResults     String? // JSON: { found: [], missing: [], recommendations: [] }
+  updatedAt       DateTime @updatedAt
+}
+
+// ==================== TELEGRAM API ====================
+
+model TelegramApiSettings {
+  id              Int     @id @default(1)
+  botToken        String? // Telegram Bot API token
+  apiId           String? // Telegram API ID (from my.telegram.org)
+  apiHash         String? // Telegram API Hash (from my.telegram.org)
+  fetchInterval   Int     @default(60) // Fetch interval in minutes: 30, 60, 180, 1440
+  autoFetch       Boolean @default(false) // Enable automatic data fetching
+  lastFetchAt     DateTime? // Last successful fetch timestamp
+  lastFetchStatus String? // JSON: { success: bool, channelsFetched: int, errors: string[], duration: int }
+  channelUsernames String? // JSON: ["channel1", "channel2", ...] - monitored channels
+  updatedAt       DateTime @updatedAt
+}
+
+// ==================== COMMENTS ====================
+
+model ChannelComment {
+  id          Int           @id @default(autoincrement())
+  channelId   Int
+  channel     Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  status      CommentStatus @default(PENDING)
+  reviewedBy  Int?
+  reviewer    User?         @relation("CommentReviewer", fields: [reviewedBy], references: [id])
+  reviewedAt  DateTime?
+  rejectReason String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// ==================== SEO ====================
+
+enum TwitterCardType {
+  SUMMARY
+  SUMMARY_LARGE_IMAGE
+}
+
+enum PageTypeEnum {
+  HOMEPAGE
+  CHANNEL_DETAIL
+  CATEGORY
+  TAG
+  SEARCH
+  LANGUAGE
+  USER_PROFILE
+  STATIC_PAGE
+  PREMIUM
+}
+
+enum SchemaTypeEnum {
+  ORGANIZATION
+  WEBSITE
+  BREADCRUMB
+  ITEMLIST
+  ARTICLE
+  PRODUCT
+  FAQ
+  LOCALBUSINESS
+  CUSTOM
+}
+
+enum RuleTypeEnum {
+  ALLOW
+  DISALLOW
+  CRAWL_DELAY
+  SITEMAP
+}
+
+enum ChangeFreqEnum {
+  ALWAYS
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  NEVER
+}
+
+enum AuditTargetTypeEnum {
+  CHANNEL
+  CATEGORY
+  PAGE
+  GLOBAL
+}
+
+model SeoSettings {
+  id                      Int       @id @default(1)
+  defaultMetaTitle        String?   // JSON i18n
+  defaultMetaDescription  String?   // JSON i18n
+  defaultMetaKeywords     String?   // JSON i18n
+  titleSeparator          String    @default(" | ")
+  titleSuffix             String?   // JSON i18n
+  ogDefaultImage          String?
+  ogImageWidth            Int       @default(1200)
+  ogImageHeight           Int       @default(630)
+  twitterCard             TwitterCardType @default(SUMMARY)
+  twitterSite             String?
+  twitterCreator          String?
+  facebookAppId           String?
+  googleSiteVerification  String?
+  bingSiteVerification    String?
+  yandexVerification      String?
+  pinterestVerification   String?
+  googleAnalyticsId       String?
+  googleTagManagerId      String?
+  facebookPixelId         String?
+  hotjarId                String?
+  microsoftClarityId      String?
+  customHeadScripts       String?   // Text
+  customBodyScripts       String?   // Text
+  canonicalDomain         String?
+  forceHttps              Boolean   @default(true)
+  enableSitemap           Boolean   @default(true)
+  enableRobotsTxt         Boolean   @default(true)
+  enableRssFeed           Boolean   @default(false)
+  defaultLanguage         String    @default("en")
+  urlStructure            String    @default("subdirectory") // subdirectory | subdomain | parameter
+  enableHreflang          Boolean   @default(true)
+  updatedAt               DateTime  @updatedAt
+}
+
+model MetaTemplate {
+  id                    Int       @id @default(autoincrement())
+  pageType              PageTypeEnum @unique
+  titleTemplate         String?   // JSON i18n
+  descriptionTemplate   String?   // JSON i18n
+  keywordsTemplate      String?   // JSON i18n
+  ogTitleTemplate       String?   // JSON i18n
+  ogDescriptionTemplate String?   // JSON i18n
+  ogImageTemplate       String?
+  isActive              Boolean   @default(true)
+  variables             String?   // JSON: available variable list
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Redirect {
+  id          Int       @id @default(autoincrement())
+  fromPath    String    @unique
+  toPath      String
+  statusCode  Int       @default(301)
+  hitCount    Int       @default(0)
+  lastHitAt   DateTime?
+  isActive    Boolean   @default(true)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model BrokenLink {
+  id                    Int       @id @default(autoincrement())
+  url                   String
+  statusCode            Int
+  referrer              String?
+  userAgent             String?
+  hitCount              Int       @default(1)
+  lastHitAt             DateTime
+  isResolved            Boolean   @default(false)
+  resolvedWithRedirectId Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model RobotsRule {
+  id        Int       @id @default(autoincrement())
+  userAgent String    @default("*")
+  ruleType  RuleTypeEnum
+  path      String
+  value     String?
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model StructuredData {
+  id        Int       @id @default(autoincrement())
+  name      String
+  schemaType SchemaTypeEnum
+  pageType  PageTypeEnum?
+  jsonLd    String    // JSON
+  isActive  Boolean   @default(true)
+  isGlobal  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model SeoAudit {
+  id          Int       @id @default(autoincrement())
+  targetType  AuditTargetTypeEnum
+  targetId    Int?
+  url         String
+  score       Int       @default(0)
+  issues      String    // JSON
+  warnings    String    // JSON
+  passed      String    // JSON
+  scannedAt   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+}
+
+model SeoKeyword {
+  id              Int       @id @default(autoincrement())
+  keyword         String
+  language        String    @default("en")
+  country         String?
+  currentPosition Int?
+  previousPosition Int?
+  searchVolume    Int?
+  difficulty      Int?
+  targetUrl       String?
+  isTracking      Boolean   @default(true)
+  lastCheckedAt   DateTime?
+  history         String?   // JSON: [{date, position}]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model SitemapEntry {
+  id         Int       @id @default(autoincrement())
+  url        String    @unique
+  priority   Float     @default(0.5)
+  changeFreq ChangeFreqEnum @default(WEEKLY)
+  lastMod    DateTime  @default(now())
+  isExcluded Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ==================== GENERAL SETTINGS ====================
+
+model GeneralSettings {
+  id                Int     @id @default(1)
+  phone             String?
+  whatsappNumber    String?
+  email             String?
+  address           String? // JSON i18n
+  // Social Media
+  facebookUrl       String?
+  twitterUrl        String?
+  linkedinUrl       String?
+  instagramUrl      String?
+  tiktokUrl         String?
+  youtubeUrl        String?
+  pinterestUrl      String?
+  googleMapsUrl     String?
+  yandexMapsUrl     String?
+  // Footer
+  footerAbout       String? // JSON i18n
+  footerQuickLinks  String? // JSON: [{label, url}]
+  footerActivityLinks String? // JSON: [{label, url}]
+  // Logo (from SiteSettings)
+  updatedAt         DateTime @updatedAt
+}
