@@ -18,9 +18,12 @@ RUN bunx prisma generate
 # Build Next.js (standalone output)
 RUN bunx next build
 
-# Run Prisma db push during build to create the database file
+# Create database with schema
 ENV DATABASE_URL="file:/app/data/custom.db"
 RUN mkdir -p /app/data && bunx prisma db push --skip-generate
+
+# Seed the database: admin user, categories, plans, settings
+RUN node scripts/seed.js
 
 # ---- Stage 3: Production ----
 FROM node:20-slim AS runner
@@ -53,7 +56,7 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 # Copy seed script
 COPY --from=builder /app/scripts ./scripts
 
-# Copy pre-built SQLite database from builder
+# Copy pre-built SQLite database from builder (with seed data included)
 COPY --from=builder /app/data/custom.db /app/data/custom.db
 
 # Create data directory for SQLite and set ownership
@@ -71,6 +74,5 @@ USER nextjs
 
 EXPOSE 3000
 
-# Start server directly — database is already created during build
-# If schema changes, prisma db push will run first
+# Start: run migrations if needed, then start server
 CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js db push --skip-generate 2>/dev/null; node server.js"]
