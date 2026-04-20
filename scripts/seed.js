@@ -79,6 +79,96 @@ async function main() {
     console.log('Site settings created');
   }
 
+  // Meta Templates for SEO
+  const metaTemplatesData = [
+    {
+      pageType: 'HOMEPAGE',
+      titleTemplate: JSON.stringify({ en: '{{siteName}}', tr: '{{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: '{{siteDescription}}', tr: '{{siteDescription}}' }),
+      keywordsTemplate: JSON.stringify({ en: '{{keywords}}', tr: '{{keywords}}' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{siteName}}', tr: '{{siteName}}' }),
+      ogDescriptionTemplate: JSON.stringify({ en: '{{siteDescription}}', tr: '{{siteDescription}}' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'keywords']),
+    },
+    {
+      pageType: 'CHANNEL_DETAIL',
+      titleTemplate: JSON.stringify({ en: '{{channelName}} - {{siteName}}', tr: '{{channelName}} - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: '{{channelDescription}}', tr: '{{channelDescription}}' }),
+      keywordsTemplate: JSON.stringify({ en: '{{channelName}}, telegram', tr: '{{channelName}}, telegram' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{channelName}}', tr: '{{channelName}}' }),
+      ogDescriptionTemplate: JSON.stringify({ en: '{{channelDescription}}', tr: '{{channelDescription}}' }),
+      ogImageTemplate: '{{channelImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'channelName', 'channelDescription', 'channelImage', 'memberCount']),
+    },
+    {
+      pageType: 'CATEGORY',
+      titleTemplate: JSON.stringify({ en: '{{categoryName}} - {{siteName}}', tr: '{{categoryName}} - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: '{{categoryDescription}}', tr: '{{categoryDescription}}' }),
+      keywordsTemplate: JSON.stringify({ en: '{{categoryName}}, telegram', tr: '{{categoryName}}, telegram' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{categoryName}}', tr: '{{categoryName}}' }),
+      ogDescriptionTemplate: JSON.stringify({ en: '{{categoryDescription}}', tr: '{{categoryDescription}}' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'categoryName', 'categoryDescription']),
+    },
+    {
+      pageType: 'TAG',
+      titleTemplate: JSON.stringify({ en: '{{tagName}} - {{siteName}}', tr: '{{tagName}} - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: 'Channels tagged with {{tagName}}', tr: '{{tagName}} ile etiketlenen kanallar' }),
+      keywordsTemplate: JSON.stringify({ en: '{{tagName}}, telegram', tr: '{{tagName}}, telegram' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{tagName}}', tr: '{{tagName}}' }),
+      ogDescriptionTemplate: JSON.stringify({ en: 'Channels tagged with {{tagName}}', tr: '{{tagName}} ile etiketlenen kanallar' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'tagName']),
+    },
+    {
+      pageType: 'SEARCH',
+      titleTemplate: JSON.stringify({ en: '{{searchQuery}} - {{siteName}}', tr: '{{searchQuery}} - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: 'Search results for {{searchQuery}}', tr: '{{searchQuery}} için arama sonuçları' }),
+      keywordsTemplate: JSON.stringify({ en: '{{searchQuery}}', tr: '{{searchQuery}}' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{searchQuery}}', tr: '{{searchQuery}}' }),
+      ogDescriptionTemplate: JSON.stringify({ en: 'Search results', tr: 'Arama sonuçları' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'searchQuery']),
+    },
+    {
+      pageType: 'LANGUAGE',
+      titleTemplate: JSON.stringify({ en: '{{languageName}} Channels - {{siteName}}', tr: '{{languageName}} Kanallar - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: 'Browse {{languageName}} Telegram channels', tr: '{{languageName}} Telegram kanallarına göz atın' }),
+      keywordsTemplate: JSON.stringify({ en: '{{languageName}}, telegram, channels', tr: '{{languageName}}, telegram, kanallar' }),
+      ogTitleTemplate: JSON.stringify({ en: '{{languageName}} Channels', tr: '{{languageName}} Kanallar' }),
+      ogDescriptionTemplate: JSON.stringify({ en: 'Browse {{languageName}} Telegram channels', tr: '{{languageName}} Telegram kanallarına göz atın' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage', 'languageName']),
+    },
+    {
+      pageType: 'PREMIUM',
+      titleTemplate: JSON.stringify({ en: 'Premium - {{siteName}}', tr: 'Premium - {{siteName}}' }),
+      descriptionTemplate: JSON.stringify({ en: 'Promote your Telegram channel with premium features', tr: 'Telegram kanalınızı premium özelliklerle tanıtın' }),
+      keywordsTemplate: JSON.stringify({ en: 'premium, promote, telegram', tr: 'premium, tanıtım, telegram' }),
+      ogTitleTemplate: JSON.stringify({ en: 'Premium', tr: 'Premium' }),
+      ogDescriptionTemplate: JSON.stringify({ en: 'Promote your Telegram channel', tr: 'Telegram kanalınızı tanıtın' }),
+      ogImageTemplate: '{{ogImage}}',
+      isActive: true,
+      variables: JSON.stringify(['siteName', 'siteDescription', 'ogImage']),
+    },
+  ];
+
+  for (const tmpl of metaTemplatesData) {
+    await db.metaTemplate.upsert({
+      where: { pageType: tmpl.pageType },
+      update: {},
+      create: tmpl,
+    });
+  }
+  console.log('Meta templates created:', metaTemplatesData.length);
+
   console.log('Structural seed complete! No demo channels were added.');
   console.log('Use the admin panel or Telegram API to add real channels.');
 }

@@ -655,7 +655,12 @@ function SeoTemplates() {
       if (res.ok) {
         const data = await res.json();
         // API returns array directly
-        setTemplates(Array.isArray(data) ? data : []);
+        setTemplates(Array.isArray(data) && data.length > 0 ? data : [
+          { id: 1, pageType: 'HOMEPAGE', titleTemplate: '{{siteName}}', descriptionTemplate: '{{siteDescription}}', keywordsTemplate: '{{keywords}}', ogTitleTemplate: '{{siteName}}', ogDescTemplate: '{{siteDescription}}', ogImageTemplate: '{{ogImage}}', isActive: true },
+          { id: 2, pageType: 'CHANNEL_DETAIL', titleTemplate: '{{channelName}} - {{siteName}}', descriptionTemplate: '{{channelDescription}}', keywordsTemplate: '{{channelName}}, telegram', ogTitleTemplate: '{{channelName}}', ogDescTemplate: '{{channelDescription}}', ogImageTemplate: '{{channelImage}}', isActive: true },
+          { id: 3, pageType: 'CATEGORY', titleTemplate: '{{categoryName}} - {{siteName}}', descriptionTemplate: '{{categoryDescription}}', keywordsTemplate: '{{categoryName}}, telegram', ogTitleTemplate: '{{categoryName}}', ogDescTemplate: '{{categoryDescription}}', ogImageTemplate: '{{ogImage}}', isActive: true },
+          { id: 4, pageType: 'SEARCH', titleTemplate: '{{searchQuery}} - {{siteName}}', descriptionTemplate: 'Search results for {{searchQuery}}', keywordsTemplate: '{{searchQuery}}', ogTitleTemplate: '{{searchQuery}}', ogDescTemplate: 'Search results', ogImageTemplate: '{{ogImage}}', isActive: true },
+        ]);
       } else {
         // Default templates
         setTemplates([
