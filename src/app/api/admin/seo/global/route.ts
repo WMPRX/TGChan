@@ -46,7 +46,14 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(settings);
+    // Replace null string fields with empty strings to prevent React input crashes
+    const sanitized = Object.fromEntries(
+      Object.entries(settings).map(([key, value]) => [
+        key,
+        value === null && key !== 'defaultLanguage' && key !== 'urlStructure' ? '' : value,
+      ])
+    );
+    return NextResponse.json(sanitized);
   } catch (error) {
     console.error('SEO global GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch SEO settings' }, { status: 500 });
