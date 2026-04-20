@@ -12,5 +12,4 @@ agent-ctx/
 .zscripts/
 db/
 *.log
-dev.log
-server.log
+gh

@@ -16,11 +16,14 @@ COPY . .
 RUN bunx prisma generate
 
 # Build Next.js (standalone output)
-RUN bun run build
+RUN bunx next build
 
 # ---- Stage 3: Production ----
-FROM oven/bun:1.3-slim AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
+
+# Install openssl (needed for Prisma) and curl (for healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends openssl curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -34,8 +37,12 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Copy Prisma schema and migrations for runtime
+# Copy Prisma schema for runtime migrations
 COPY --from=builder /app/prisma ./prisma
+
+# Copy Prisma engine binaries from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy seed script
 COPY --from=builder /app/scripts ./scripts
@@ -54,4 +61,4 @@ USER nextjs
 EXPOSE 3000
 
 # Start: run migrations then start the server
-CMD ["sh", "-c", "bunx prisma db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
