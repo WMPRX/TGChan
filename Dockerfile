@@ -22,7 +22,7 @@ RUN bunx next build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# Install openssl (needed for Prisma) and curl (for healthcheck)
+# Install openssl (needed for Prisma SQLite) and curl (for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends openssl curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
@@ -40,9 +40,10 @@ COPY --from=builder /app/public ./public
 # Copy Prisma schema for runtime migrations
 COPY --from=builder /app/prisma ./prisma
 
-# Copy Prisma engine binaries from builder
+# Copy full Prisma packages (includes CLI binary for db push)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Copy seed script
 COPY --from=builder /app/scripts ./scripts
@@ -61,4 +62,4 @@ USER nextjs
 EXPOSE 3000
 
 # Start: run migrations then start the server
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js db push --skip-generate && node server.js"]
